@@ -154,6 +154,28 @@ class _CupertinoControlsState extends State<CupertinoControls>
     super.didChangeDependencies();
   }
 
+  GestureDetector _buildFullScreenButton(
+    Color iconColor,
+    double barHeight,
+  ) {
+    return GestureDetector(
+      onTap: _onExpandCollapse,
+      child: Container(
+        height: barHeight,
+        color: Colors.transparent,
+        padding: const EdgeInsets.only(left: 4.0, right: 8.0),
+        margin: const EdgeInsets.only(right: 6.0),
+        child: Icon(
+          chewieController.isFullScreen
+              ? CupertinoIcons.arrow_down_right_arrow_up_left
+              : CupertinoIcons.arrow_up_left_arrow_down_right,
+          color: iconColor,
+          size: 18,
+        ),
+      ),
+    );
+  }
+
   GestureDetector _buildOptionsButton(
     Color iconColor,
     double barHeight,
@@ -280,13 +302,15 @@ class _CupertinoControlsState extends State<CupertinoControls>
                           _buildPosition(iconColor),
                           _buildProgressBar(),
                           _buildRemaining(iconColor),
-                          _buildSubtitleToggle(iconColor, barHeight),
+                          // _buildSubtitleToggle(iconColor, barHeight),
                           if (chewieController.allowPlaybackSpeedChanging)
                             _buildSpeedButton(controller, iconColor, barHeight),
-                          if (chewieController.additionalOptions != null &&
-                              chewieController
-                                  .additionalOptions!(context).isNotEmpty)
-                            _buildOptionsButton(iconColor, barHeight),
+                          // if (chewieController.additionalOptions != null &&
+                          //     chewieController
+                          //         .additionalOptions!(context).isNotEmpty)
+                          //   _buildOptionsButton(iconColor, barHeight),
+
+                          _buildFullScreenButton(iconColor, barHeight),
                         ],
                       ),
               ),
@@ -303,6 +327,44 @@ class _CupertinoControlsState extends State<CupertinoControls>
       child: Text(
         'LIVE',
         style: TextStyle(color: iconColor, fontSize: 12.0),
+      ),
+    );
+  }
+
+  GestureDetector _buildCloseButton(
+    Color backgroundColor,
+    Color iconColor,
+    double barHeight,
+    double buttonPadding,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).pop();
+      },
+      child: AnimatedOpacity(
+        opacity: notifier.hideStuff ? 0.0 : 1.0,
+        duration: const Duration(milliseconds: 300),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10.0),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 10.0),
+            child: Container(
+              height: barHeight,
+              padding: EdgeInsets.only(
+                left: buttonPadding,
+                right: buttonPadding,
+              ),
+              color: backgroundColor,
+              child: Center(
+                child: Icon(
+                  CupertinoIcons.multiply,
+                  color: iconColor,
+                  size: 16,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -607,13 +669,12 @@ class _CupertinoControlsState extends State<CupertinoControls>
       ),
       child: Row(
         children: <Widget>[
-          if (chewieController.allowFullScreen)
-            _buildExpandButton(
-              backgroundColor,
-              iconColor,
-              barHeight,
-              buttonPadding,
-            ),
+          _buildCloseButton(
+            backgroundColor,
+            iconColor,
+            barHeight,
+            buttonPadding,
+          ),
           const Spacer(),
           if (chewieController.allowMuting)
             _buildMuteButton(
