@@ -21,14 +21,14 @@ class CupertinoControls extends StatefulWidget {
   const CupertinoControls({
     required this.backgroundColor,
     required this.iconColor,
-    required this.highlightColor,
+    this.highlightColor,
     this.showPlayButton = true,
     Key? key,
   }) : super(key: key);
 
   final Color backgroundColor;
   final Color iconColor;
-  final Color highlightColor;
+  final Color? highlightColor;
   final bool showPlayButton;
 
   @override
@@ -138,18 +138,20 @@ class _CupertinoControlsState extends State<CupertinoControls>
                     alignment: Alignment.center,
                     padding: const EdgeInsets.all(8),
                     color: Colors.black.withOpacity(0.7),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.fast_forward,
                           color: Colors.white,
                           size: 16,
                         ),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Text(
                           'Playing at 3x speed',
-                          style: TextStyle(color: Colors.white, fontSize: 16),
+                          style: TextStyle(
+                              color: widget.highlightColor ?? widget.iconColor,
+                              fontSize: 16),
                         ),
                       ],
                     )),
@@ -695,7 +697,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
                 child: Text(
                 '${selectedSpeed}x',
                 style: TextStyle(
-                  color: iconColor,
+                  color: widget.highlightColor ?? widget.iconColor,
                   fontSize: 12.0,
                 ),
               ))

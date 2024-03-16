@@ -115,10 +115,10 @@ class _ChewieDemoState extends State<ChewieDemo> {
       autoPlay: true,
       looping: true,
       playbackSpeeds: [0.5, 0.8, 1.0, 1.25, 1.75, 2.0, 3.0, 4.0, 5.0],
-      customControls: CupertinoControls(
-        backgroundColor: const Color.fromRGBO(41, 41, 41, 0.7),
-        iconColor: const Color.fromARGB(255, 200, 200, 200),
-        highlightColor: Theme.of(context).colorScheme.primary,
+      customControls: const CupertinoControls(
+        backgroundColor: Color.fromRGBO(41, 41, 41, 0.7),
+        iconColor: Color.fromARGB(255, 200, 200, 200),
+        highlightColor: Colors.blueAccent,
       ),
       progressIndicatorDelay:
           bufferDelay != null ? Duration(milliseconds: bufferDelay!) : null,
