@@ -21,12 +21,14 @@ class CupertinoControls extends StatefulWidget {
   const CupertinoControls({
     required this.backgroundColor,
     required this.iconColor,
+    required this.highlightColor,
     this.showPlayButton = true,
     Key? key,
   }) : super(key: key);
 
   final Color backgroundColor;
   final Color iconColor;
+  final Color highlightColor;
   final bool showPlayButton;
 
   @override
@@ -55,6 +57,9 @@ class _CupertinoControlsState extends State<CupertinoControls>
   // We know that _chewieController is set in didChangeDependencies
   ChewieController get chewieController => _chewieController!;
   ChewieController? _chewieController;
+
+  double _previousSpeed = 1.0;
+  bool _isLongPressFastSpeedMode = false; // 新增状态变量
 
   @override
   void initState() {
@@ -85,21 +90,28 @@ class _CupertinoControlsState extends State<CupertinoControls>
     final barHeight = orientation == Orientation.portrait ? 30.0 : 47.0;
     final buttonPadding = orientation == Orientation.portrait ? 16.0 : 24.0;
 
-    return MouseRegion(
-      onHover: (_) => _cancelAndRestartTimer(),
-      child: GestureDetector(
-        onTap: () => _cancelAndRestartTimer(),
-        child: AbsorbPointer(
-          absorbing: notifier.hideStuff,
-          child: Stack(
-            children: [
-              if (_displayBufferingIndicator)
-                const Center(
-                  child: CircularProgressIndicator(),
-                )
-              else
-                _buildHitArea(),
-              Column(
+    return GestureDetector(
+      onTap: () => _cancelAndRestartTimer(),
+      onLongPressStart: (_) {
+        setState(() {
+          _previousSpeed = controller.value.playbackSpeed;
+          controller.setPlaybackSpeed(3.0);
+          _isLongPressFastSpeedMode = true;
+        });
+      },
+      onLongPressEnd: (_) {
+        setState(() {
+          controller.setPlaybackSpeed(_previousSpeed);
+          _isLongPressFastSpeedMode = false;
+        });
+      },
+      child: MouseRegion(
+        onHover: (_) => _cancelAndRestartTimer(),
+        child: Stack(
+          children: [
+            AbsorbPointer(
+              absorbing: notifier.hideStuff,
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
                   _buildTopBar(
@@ -108,20 +120,41 @@ class _CupertinoControlsState extends State<CupertinoControls>
                     barHeight,
                     buttonPadding,
                   ),
-                  const Spacer(),
-                  if (_subtitleOn)
-                    Transform.translate(
-                      offset: Offset(
-                        0.0,
-                        notifier.hideStuff ? barHeight * 0.8 : 0.0,
-                      ),
-                      child: _buildSubtitles(chewieController.subtitle!),
-                    ),
+                  Expanded(
+                    child: _displayBufferingIndicator
+                        ? const Center(child: CircularProgressIndicator())
+                        : _buildHitArea(),
+                  ),
                   _buildBottomBar(backgroundColor, iconColor, barHeight),
                 ],
               ),
-            ],
-          ),
+            ),
+            if (_isLongPressFastSpeedMode) // 3倍速显示逻辑
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.all(8),
+                    color: Colors.black.withOpacity(0.7),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.fast_forward,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Playing at 3x speed',
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                      ],
+                    )),
+              ),
+          ],
         ),
       ),
     );
@@ -296,9 +329,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
                       )
                     : Row(
                         children: <Widget>[
-                          _buildSkipBack(iconColor, barHeight),
                           _buildPlayPause(controller, iconColor, barHeight),
-                          _buildSkipForward(iconColor, barHeight),
                           _buildPosition(iconColor),
                           _buildProgressBar(),
                           _buildRemaining(iconColor),
@@ -409,8 +440,9 @@ class _CupertinoControlsState extends State<CupertinoControls>
 
   Widget _buildHitArea() {
     final bool isFinished = _latestValue.position >= _latestValue.duration;
-    final bool showPlayButton =
-        widget.showPlayButton && !_latestValue.isPlaying && !_dragging;
+    // final bool showPlayButton =
+    //     widget.showPlayButton && !_latestValue.isPlaying && !_dragging;
+    final bool show = !notifier.hideStuff;
 
     return GestureDetector(
       onTap: _latestValue.isPlaying
@@ -422,13 +454,28 @@ class _CupertinoControlsState extends State<CupertinoControls>
                 notifier.hideStuff = false;
               });
             },
-      child: CenterPlayButton(
-        backgroundColor: widget.backgroundColor,
-        iconColor: widget.iconColor,
-        isFinished: isFinished,
-        isPlaying: controller.value.isPlaying,
-        show: showPlayButton,
-        onPressed: _playPause,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          const Spacer(),
+          _buildSkipBack(widget.iconColor, 32.0, show),
+          const SizedBox(
+            width: 40,
+          ),
+          CenterPlayButton(
+            backgroundColor: widget.backgroundColor,
+            iconColor: widget.iconColor,
+            isFinished: isFinished,
+            isPlaying: controller.value.isPlaying,
+            show: show,
+            onPressed: _playPause,
+          ),
+          const SizedBox(
+            width: 40,
+          ),
+          _buildSkipForward(widget.iconColor, 32.0, show),
+          const Spacer(),
+        ],
       ),
     );
   }
@@ -558,46 +605,50 @@ class _CupertinoControlsState extends State<CupertinoControls>
     });
   }
 
-  GestureDetector _buildSkipBack(Color iconColor, double barHeight) {
-    return GestureDetector(
-      onTap: _skipBack,
-      child: Container(
-        height: barHeight,
-        color: Colors.transparent,
-        margin: const EdgeInsets.only(left: 10.0),
-        padding: const EdgeInsets.only(
-          left: 6.0,
-          right: 6.0,
-        ),
-        child: Icon(
-          CupertinoIcons.gobackward_15,
-          color: iconColor,
-          size: 18.0,
-        ),
-      ),
-    );
+  Widget _buildSkipBack(Color iconColor, double iconSize, bool show) {
+    return AnimatedOpacity(
+        opacity: show ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 300),
+        child: GestureDetector(
+          onTap: _skipBack,
+          child: Container(
+            color: Colors.transparent,
+            margin: const EdgeInsets.only(left: 10.0),
+            padding: const EdgeInsets.only(
+              left: 6.0,
+              right: 6.0,
+            ),
+            child: Icon(
+              CupertinoIcons.gobackward_10,
+              color: iconColor,
+              size: iconSize,
+            ),
+          ),
+        ));
   }
 
-  GestureDetector _buildSkipForward(Color iconColor, double barHeight) {
-    return GestureDetector(
-      onTap: _skipForward,
-      child: Container(
-        height: barHeight,
-        color: Colors.transparent,
-        padding: const EdgeInsets.only(
-          left: 6.0,
-          right: 8.0,
-        ),
-        margin: const EdgeInsets.only(
-          right: 8.0,
-        ),
-        child: Icon(
-          CupertinoIcons.goforward_15,
-          color: iconColor,
-          size: 18.0,
-        ),
-      ),
-    );
+  Widget _buildSkipForward(Color iconColor, double iconSize, bool show) {
+    return AnimatedOpacity(
+        opacity: show ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 300),
+        child: GestureDetector(
+          onTap: _skipForward,
+          child: Container(
+            color: Colors.transparent,
+            padding: const EdgeInsets.only(
+              left: 6.0,
+              right: 8.0,
+            ),
+            margin: const EdgeInsets.only(
+              right: 8.0,
+            ),
+            child: Icon(
+              CupertinoIcons.goforward_10,
+              color: iconColor,
+              size: iconSize,
+            ),
+          ),
+        ));
   }
 
   GestureDetector _buildSpeedButton(
@@ -639,17 +690,20 @@ class _CupertinoControlsState extends State<CupertinoControls>
         margin: const EdgeInsets.only(
           right: 8.0,
         ),
-        child: Transform(
-          alignment: Alignment.center,
-          transform: Matrix4.skewY(0.0)
-            ..rotateX(math.pi)
-            ..rotateZ(math.pi * 0.8),
-          child: Icon(
-            Icons.speed,
-            color: iconColor,
-            size: 18.0,
-          ),
-        ),
+        child: selectedSpeed != 1.0
+            ? Center(
+                child: Text(
+                '${selectedSpeed}x',
+                style: TextStyle(
+                  color: iconColor,
+                  fontSize: 12.0,
+                ),
+              ))
+            : Icon(
+                Icons.speed_sharp,
+                color: iconColor,
+                size: 16.0,
+              ),
       ),
     );
   }
@@ -815,7 +869,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
     _cancelAndRestartTimer();
     final beginning = Duration.zero.inMilliseconds;
     final skip =
-        (_latestValue.position - const Duration(seconds: 15)).inMilliseconds;
+        (_latestValue.position - const Duration(seconds: 10)).inMilliseconds;
     await controller.seekTo(Duration(milliseconds: math.max(skip, beginning)));
     // Restoring the video speed to selected speed
     // A delay of 1 second is added to ensure a smooth transition of speed after reversing the video as reversing is an asynchronous function
@@ -828,7 +882,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
     _cancelAndRestartTimer();
     final end = _latestValue.duration.inMilliseconds;
     final skip =
-        (_latestValue.position + const Duration(seconds: 15)).inMilliseconds;
+        (_latestValue.position + const Duration(seconds: 10)).inMilliseconds;
     await controller.seekTo(Duration(milliseconds: math.min(skip, end)));
     // Restoring the video speed to selected speed
     // A delay of 1 second is added to ensure a smooth transition of speed after forwarding the video as forwaring is an asynchronous function
@@ -876,6 +930,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
 
     setState(() {
       _latestValue = controller.value;
+      selectedSpeed = _latestValue.playbackSpeed;
       _subtitlesPosition = controller.value.position;
     });
   }
@@ -895,7 +950,7 @@ class _PlaybackSpeedDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selectedColor = CupertinoTheme.of(context).primaryColor;
+    // final selectedColor = CupertinoTheme.of(context).primaryColor;
 
     return CupertinoActionSheet(
       actions: _speeds
@@ -904,14 +959,8 @@ class _PlaybackSpeedDialog extends StatelessWidget {
               onPressed: () {
                 Navigator.of(context).pop(e);
               },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (e == _selected)
-                    Icon(Icons.check, size: 20.0, color: selectedColor),
-                  Text(e.toString()),
-                ],
-              ),
+              isDefaultAction: e == _selected,
+              child: Text(e.toString()),
             ),
           )
           .toList(),
