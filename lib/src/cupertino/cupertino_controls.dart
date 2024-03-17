@@ -91,26 +91,41 @@ class _CupertinoControlsState extends State<CupertinoControls>
     final buttonPadding = orientation == Orientation.portrait ? 16.0 : 24.0;
 
     return GestureDetector(
+      // behavior: HitTestBehavior.opaque,
       onTap: () => _cancelAndRestartTimer(),
-      onLongPressStart: (_) {
-        setState(() {
-          _previousSpeed = controller.value.playbackSpeed;
-          controller.setPlaybackSpeed(3.0);
-          _isLongPressFastSpeedMode = true;
-        });
-      },
-      onLongPressEnd: (_) {
-        setState(() {
-          controller.setPlaybackSpeed(_previousSpeed);
-          _isLongPressFastSpeedMode = false;
-        });
-      },
       child: MouseRegion(
         onHover: (_) => _cancelAndRestartTimer(),
         child: Stack(
           children: [
+            Positioned.fill(
+              child: GestureDetector(
+                // behavior: HitTestBehavior.opaque,
+                onTap: _latestValue.isPlaying
+                    ? _cancelAndRestartTimer
+                    : () {
+                  _hideTimer?.cancel();
+
+                  setState(() {
+                    notifier.hideStuff = false;
+                  });
+                },
+                onLongPressStart: (_) {
+                  setState(() {
+                    _previousSpeed = controller.value.playbackSpeed;
+                    controller.setPlaybackSpeed(3.0);
+                    _isLongPressFastSpeedMode = true;
+                  });
+                },
+                onLongPressEnd: (_) {
+                  setState(() {
+                    controller.setPlaybackSpeed(_previousSpeed);
+                    _isLongPressFastSpeedMode = false;
+                  });
+                },
+              ),
+            ),
             AbsorbPointer(
-              absorbing: notifier.hideStuff,
+              absorbing: false,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
@@ -129,6 +144,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
                 ],
               ),
             ),
+
             if (_isLongPressFastSpeedMode) // 3倍速显示逻辑
               Positioned(
                 top: 0,
@@ -447,20 +463,30 @@ class _CupertinoControlsState extends State<CupertinoControls>
     final bool show = !notifier.hideStuff;
 
     return GestureDetector(
-      onTap: _latestValue.isPlaying
-          ? _cancelAndRestartTimer
-          : () {
-              _hideTimer?.cancel();
-
-              setState(() {
-                notifier.hideStuff = false;
-              });
-            },
+      // behavior: HitTestBehavior.opaque,
+      // onTap: _latestValue.isPlaying
+      //     ? _cancelAndRestartTimer
+      //     : () {
+      //         _hideTimer?.cancel();
+      //
+      //         setState(() {
+      //           notifier.hideStuff = false;
+      //         });
+      //       },
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           const Spacer(),
-          _buildSkipBack(widget.iconColor, 32.0, show),
+          // _buildSkipBack(widget.iconColor, 32.0, show),
+          AnimatedControlButton(
+            show: show,
+            iconColor: widget.iconColor,
+            backgroundColor: widget.backgroundColor,
+            iconSize: 32.0,
+            onPressed: _skipBack,
+            icon: CupertinoIcons.gobackward_10,
+          ),
+
           const SizedBox(
             width: 40,
           ),
@@ -475,7 +501,15 @@ class _CupertinoControlsState extends State<CupertinoControls>
           const SizedBox(
             width: 40,
           ),
-          _buildSkipForward(widget.iconColor, 32.0, show),
+          AnimatedControlButton(
+            show: show,
+            iconColor: widget.iconColor,
+            backgroundColor: widget.backgroundColor,
+            iconSize: 32.0,
+            onPressed: _skipForward,
+            icon: CupertinoIcons.goforward_10,
+          ),
+          // _buildSkipForward(widget.iconColor, 32.0, show),
           const Spacer(),
         ],
       ),
@@ -953,7 +987,6 @@ class _PlaybackSpeedDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // final selectedColor = CupertinoTheme.of(context).primaryColor;
-
     return CupertinoActionSheet(
       actions: _speeds
           .map(
@@ -966,6 +999,105 @@ class _PlaybackSpeedDialog extends StatelessWidget {
             ),
           )
           .toList(),
+    );
+  }
+}
+
+class AnimatedControlButton extends StatefulWidget {
+  const AnimatedControlButton({
+    super.key,
+    required this.show,
+    required this.iconColor,
+    required this.iconSize,
+    required this.onPressed,
+    required this.icon,
+    required this.backgroundColor,
+  });
+
+  final bool show;
+  final IconData icon;
+  final Color iconColor;
+  final double iconSize;
+  final VoidCallback onPressed;
+  final Color backgroundColor;
+
+  @override
+  State<AnimatedControlButton> createState() => _AnimatedControlButtonState();
+}
+
+class _AnimatedControlButtonState extends State<AnimatedControlButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Color?> _colorAnimation;
+  late Animation<double> _scaleAnimation;
+  // 100ms 是一个非常合适人类点击速度的值，基本贴近了Safari播放器的点击动画效果
+  static const kPressDuration = Duration(milliseconds: 100);
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+
+    _colorAnimation = ColorTween(
+      begin: Colors.transparent,
+      end: Colors.white54,
+    ).animate(_controller);
+
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.75,
+    ).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      opacity: widget.show ? 1.0 : 0.0,
+      duration: kPressDuration,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTapDown: (_) => _controller.forward(),
+        onTapCancel: () => _controller.reverse(),
+        onTap: () {
+          widget.onPressed();
+          Future.delayed(kPressDuration, () {
+            if (mounted) {
+              _controller.reverse();
+            }
+          });
+        },
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Container(
+              decoration: BoxDecoration(
+                color: _colorAnimation.value,
+                shape: BoxShape.circle,
+              ),
+              child: Transform.scale(
+                scale: _scaleAnimation.value,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Icon(
+                    widget.icon,
+                    color: widget.iconColor,
+                    size: widget.iconSize,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }

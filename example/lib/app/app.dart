@@ -44,7 +44,8 @@ class _ChewieDemoState extends State<ChewieDemo> {
   List<String> srcs = [
     "https://assets.mixkit.co/videos/preview/mixkit-spinning-around-the-earth-29351-large.mp4",
     "https://assets.mixkit.co/videos/preview/mixkit-daytime-city-traffic-aerial-view-56-large.mp4",
-    "https://assets.mixkit.co/videos/preview/mixkit-a-girl-blowing-a-bubble-gum-at-an-amusement-park-1226-large.mp4"
+    "https://assets.mixkit.co/videos/preview/mixkit-a-girl-blowing-a-bubble-gum-at-an-amusement-park-1226-large.mp4",
+    "https://media.w3.org/2010/05/sintel/trailer.mp4"
   ];
 
   Future<void> initializePlayer() async {
@@ -145,7 +146,7 @@ class _ChewieDemoState extends State<ChewieDemo> {
               ),
       ),
 
-      hideControlsTimer: const Duration(seconds: 10),
+      hideControlsTimer: const Duration(seconds: 3),
 
       // Try playing around with some of these other options:
 
@@ -163,7 +164,7 @@ class _ChewieDemoState extends State<ChewieDemo> {
     );
   }
 
-  int currPlayIndex = 1;
+  int currPlayIndex = 3;
 
   Future<void> toggleVideo() async {
     await _videoPlayerController1.pause();
