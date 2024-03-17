@@ -103,12 +103,12 @@ class _CupertinoControlsState extends State<CupertinoControls>
                 onTap: _latestValue.isPlaying
                     ? _cancelAndRestartTimer
                     : () {
-                  _hideTimer?.cancel();
+                        _hideTimer?.cancel();
 
-                  setState(() {
-                    notifier.hideStuff = false;
-                  });
-                },
+                        setState(() {
+                          notifier.hideStuff = false;
+                        });
+                      },
                 onLongPressStart: (_) {
                   setState(() {
                     _previousSpeed = controller.value.playbackSpeed;
@@ -144,7 +144,6 @@ class _CupertinoControlsState extends State<CupertinoControls>
                 ],
               ),
             ),
-
             if (_isLongPressFastSpeedMode) // 3倍速显示逻辑
               Positioned(
                 top: 0,
@@ -388,7 +387,11 @@ class _CupertinoControlsState extends State<CupertinoControls>
   ) {
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).pop();
+        if (chewieController.isFullScreen) {
+          chewieController.toggleFullScreen();
+        } else {
+          Navigator.of(context).pop();
+        }
       },
       child: AnimatedOpacity(
         opacity: notifier.hideStuff ? 0.0 : 1.0,
